@@ -1,5 +1,7 @@
 import pgzrun
 from random import randint
+
+from pgzero.actor import Actor
 from pygame import Rect
 
 WIDTH = 800
