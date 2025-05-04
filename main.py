@@ -1,21 +1,17 @@
 import pgzrun
 from random import randint
-
-from pgzero.actor import Actor
 from pygame import Rect
 
 WIDTH = 800
 HEIGHT = 480
 
-# Estados
+# Estados do jogo
 game_started = False
 sound_on = True
+fade_alpha = 255
 gravity = 1
 jump_strength = -22
-on_ground = True
-lives = 3
 max_lives = 3
-fade_alpha = 255
 
 # Sprites
 idle_frames = ['idle0', 'idle1', 'idle2', 'idle3']
@@ -23,37 +19,105 @@ run_frames = ['run0', 'run1', 'run2', 'run3']
 jump_frame = 'jump0'
 heart_img = 'heart'
 enemy_img = 'enemy'
-current_frame = 0
-frame_delay = 5
-frame_count = 0
-
-# Heroi
-hero = Actor(idle_frames[0], pos=(100, 380))
-hero.vy = 0
-
-# Inimigo único
-enemy = Actor(enemy_img, pos=(600, 380))
-enemy.vx = 2
 
 # Plataformas
 platforms = [Rect((300, 300), (200, 20)), Rect((600, 200), (150, 20))]
 
-# Botões
+# Botões do menu
 buttons = {
     'start': Rect((WIDTH // 2 - 60, 200), (120, 40)),
     'sound': Rect((WIDTH // 2 - 60, 260), (120, 40)),
     'exit': Rect((WIDTH // 2 - 60, 320), (120, 40))
 }
 
+class Hero:
+    def __init__(self):
+        self.actor = Actor(idle_frames[0], pos=(100, 380))
+        self.velocity_y = 0
+        self.on_ground = True
+        self.frame_count = 0
+        self.frame_index = 0
+        self.frame_delay = 5
+        self.lives = max_lives
+
+    def update(self):
+        self.velocity_y += gravity
+        self.actor.y += self.velocity_y
+        self.on_ground = False
+
+        # Piso
+        if self.actor.y >= 380:
+            self.actor.y = 380
+            self.velocity_y = 0
+            self.on_ground = True
+
+        # Plataformas
+        for platform in platforms:
+            if self.actor.colliderect(platform) and self.velocity_y > 0 and self.actor.y < platform.y:
+                self.actor.y = platform.y
+                self.velocity_y = 0
+                self.on_ground = True
+
+        # Movimento lateral
+        if keyboard.left:
+            self.actor.x -= 5
+            self.actor.flip_h = True
+        if keyboard.right:
+            self.actor.x += 5
+            self.actor.flip_h = False
+
+        # Animação
+        self.frame_count += 1
+        if self.frame_count >= self.frame_delay:
+            self.frame_count = 0
+            self.frame_index = (self.frame_index + 1) % len(idle_frames)
+
+        if not self.on_ground:
+            self.actor.image = jump_frame
+        elif keyboard.left or keyboard.right:
+            self.actor.image = run_frames[self.frame_index]
+        else:
+            self.actor.image = idle_frames[self.frame_index]
+
+    def draw(self):
+        self.actor.draw()
+
+    def jump(self):
+        if self.on_ground:
+            self.velocity_y = jump_strength
+
+    def reset_position(self):
+        self.actor.pos = (100, 380)
+        self.velocity_y = 0
+
+class Enemy:
+    def __init__(self, pos, speed):
+        self.actor = Actor(enemy_img, pos=pos)
+        self.speed = speed
+
+    def update(self):
+        self.actor.x += self.speed
+        if self.actor.left < 0 or self.actor.right > WIDTH:
+            self.speed *= -1
+
+    def draw(self):
+        self.actor.draw()
+
+# Instâncias
+hero = Hero()
+enemies = [Enemy((600, 380), 2), Enemy((400, 300), -1.5)]
+
 def draw():
     screen.clear()
     screen.blit('background', (0, 0))
 
     if game_started:
-        for p in platforms:
-            screen.draw.filled_rect(p, "brown")
+        for platform in platforms:
+            screen.draw.filled_rect(platform, "brown")
 
-        enemy.draw()
+        for enemy in enemies:
+            enemy.draw()
+
         hero.draw()
         draw_hearts()
 
@@ -71,11 +135,11 @@ def draw():
         screen.draw.text("Sair", center=buttons['exit'].center, fontsize=30, color="white")
 
 def draw_hearts():
-    for i in range(lives):
+    for i in range(hero.lives):
         screen.blit(heart_img, (10 + i * 40, 10))
 
 def update():
-    global frame_count, current_frame, on_ground, fade_alpha, lives
+    global fade_alpha, game_started
 
     if not game_started:
         return
@@ -83,62 +147,19 @@ def update():
     if fade_alpha > 0:
         fade_alpha -= 5
 
-    hero.vy += gravity
-    hero.y += hero.vy
+    hero.update()
+    for enemy in enemies:
+        enemy.update()
 
-    on_ground = False
-    if hero.y >= 380:
-        hero.y = 380
-        hero.vy = 0
-        on_ground = True
-
-    for p in platforms:
-        if hero.colliderect(p) and hero.vy > 0 and hero.y < p.y:
-            hero.y = p.y
-            hero.vy = 0
-            on_ground = True
-
-    if keyboard.left:
-        hero.x -= 5
-        hero.flip_h = True
-    if keyboard.right:
-        hero.x += 5
-        hero.flip_h = False
-
-    frame_count += 1
-    if frame_count >= frame_delay:
-        frame_count = 0
-        current_frame = (current_frame + 1) % len(idle_frames)
-
-    if not on_ground:
-        hero.image = jump_frame
-    elif keyboard.left or keyboard.right:
-        hero.image = run_frames[current_frame]
-    else:
-        hero.image = idle_frames[current_frame]
-
-    # Movimento do inimigo
-    enemy.x += enemy.vx
-    if enemy.left < 0 or enemy.right > WIDTH:
-        enemy.vx *= -1
-
-    if hero.colliderect(enemy):
-        hero.x, hero.y = 100, 380
-        hero.vy = 0
-        lives -= 1
-        if lives <= 0:
-            reset_game()
-
-def reset_game():
-    global game_started, lives, fade_alpha
-    game_started = False
-    lives = max_lives
-    fade_alpha = 255
-    music.stop()
+        if hero.actor.colliderect(enemy.actor):
+            hero.reset_position()
+            hero.lives -= 1
+            if hero.lives <= 0:
+                reset_game()
 
 def on_key_down(key):
-    if key == keys.SPACE and on_ground:
-        hero.vy = jump_strength
+    if key == keys.SPACE:
+        hero.jump()
 
 def on_mouse_down(pos):
     global game_started, sound_on, fade_alpha
@@ -156,5 +177,12 @@ def on_mouse_down(pos):
                 music.play('bgm')
         elif buttons['exit'].collidepoint(pos):
             exit()
+
+def reset_game():
+    global game_started, fade_alpha
+    game_started = False
+    hero.lives = max_lives
+    fade_alpha = 255
+    music.stop()
 
 pgzrun.go()
