@@ -5,7 +5,6 @@ from pygame import Rect
 WIDTH = 800
 HEIGHT = 480
 
-# Estados do jogo
 game_started = False
 sound_on = True
 fade_alpha = 255
@@ -13,17 +12,14 @@ gravity = 1
 jump_strength = -22
 max_lives = 3
 
-# Sprites
 idle_frames = ['idle0', 'idle1', 'idle2', 'idle3']
 run_frames = ['run0', 'run1', 'run2', 'run3']
 jump_frame = 'jump0'
 heart_img = 'heart'
 enemy_img = 'enemy'
 
-# Plataformas
 platforms = [Rect((300, 300), (200, 20)), Rect((600, 200), (150, 20))]
 
-# Botões do menu
 buttons = {
     'start': Rect((WIDTH // 2 - 60, 200), (120, 40)),
     'sound': Rect((WIDTH // 2 - 60, 260), (120, 40)),
@@ -51,14 +47,12 @@ class Hero:
             self.velocity_y = 0
             self.on_ground = True
 
-        # Plataformas
         for platform in platforms:
             if self.actor.colliderect(platform) and self.velocity_y > 0 and self.actor.y < platform.y:
                 self.actor.y = platform.y
                 self.velocity_y = 0
                 self.on_ground = True
 
-        # Movimento lateral
         if keyboard.left:
             self.actor.x -= 5
             self.actor.flip_h = True
@@ -66,7 +60,6 @@ class Hero:
             self.actor.x += 5
             self.actor.flip_h = False
 
-        # Animação
         self.frame_count += 1
         if self.frame_count >= self.frame_delay:
             self.frame_count = 0
@@ -103,7 +96,6 @@ class Enemy:
     def draw(self):
         self.actor.draw()
 
-# Instâncias
 hero = Hero()
 enemies = [Enemy((600, 380), 2), Enemy((400, 300), -1.5)]
 
