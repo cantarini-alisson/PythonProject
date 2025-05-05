@@ -1,5 +1,4 @@
 import pgzrun
-from random import randint
 from pygame import Rect
 
 WIDTH = 800
